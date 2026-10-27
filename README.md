@@ -873,3 +873,9 @@ Possible extensions (not existing functionality unless built and tested):
 Elimu shows how a real university platform can be designed as a distributed system rather than around one application server. Three NestJS nodes with shared PostgreSQL persistence and Redis-compatible messaging provide a practical environment for studying real-time communication, distributed state, deduplication, health monitoring, reconnection, recovery, role-based security and failure handling, while the academic features (registration, coursework, exams, controlled release of results, attendance and evaluation) give it a realistic workload.
 
 The key engineering principle remains: **multiple application nodes improve resilience only when shared dependencies, persistence guarantees and recovery behavior are understood and tested.** The final evaluation should therefore combine functional tests with measured results, controlled failure demonstrations, and an honest discussion of the limitations.
+
+## 40. CLONE
+```powershell
+git clone https://github.com/brandoenkimu/elimu.git
+cd elimu
+```

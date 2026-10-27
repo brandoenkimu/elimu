@@ -1,0 +1,11 @@
+{
+  "name": "campusconnect-gateway",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Health-aware node picker for the CampusConnect chat cluster",
+  "engines": { "node": ">=18" },
+  "scripts": {
+    "start": "node server.mjs"
+  }
+}

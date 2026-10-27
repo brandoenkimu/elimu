@@ -1,0 +1,47 @@
+.auth { min-height: 100vh; display: grid; grid-template-columns: minmax(0, 44fr) minmax(0, 56fr); background: var(--bg); }
+@media (max-width: 920px) { .auth { grid-template-columns: 1fr; } .auth-side { display: none; } }
+.auth-side { position: relative; overflow: hidden; background: var(--accent); color: var(--accent-ink); padding: clamp(32px, 4vw, 56px); display: flex; flex-direction: column; justify-content: space-between; min-height: 100vh; }
+.auth-side::before { content: ''; position: absolute; inset: 0; opacity: .16; pointer-events: none;
+  background:
+    repeating-conic-gradient(from 45deg at 50% 50%, currentColor 0 25%, transparent 0 50%) 0 0 / 44px 44px;
+  mask-image: linear-gradient(160deg, transparent 20%, #000 90%); -webkit-mask-image: linear-gradient(160deg, transparent 20%, #000 90%); }
+.auth-side::after { content: ''; position: absolute; width: 520px; height: 520px; border-radius: 50%; right: -220px; top: 18%; border: 1.5px solid color-mix(in srgb, var(--accent-ink) 25%, transparent); pointer-events: none; }
+.auth-side .brand { color: inherit; position: relative; z-index: 1; }
+.auth-side .brand .avatar, .auth-side .brand svg rect { }
+.auth-copy { position: relative; z-index: 1; max-width: 460px; }
+.auth-copy h2 { font-size: clamp(2.1rem, 3.6vw, 3.1rem); line-height: 1.06; letter-spacing: -.025em; margin-bottom: 16px; text-wrap: balance; }
+.auth-copy p { font-size: 1.1rem; opacity: .9; line-height: 1.55; }
+.auth-points { position: relative; z-index: 1; display: grid; gap: 12px; margin-top: 28px; font-weight: 600; }
+.auth-points li { display: flex; gap: 11px; align-items: center; }
+.auth-points svg { flex: none; padding: 3px; width: 22px; height: 22px; border-radius: 50%; background: color-mix(in srgb, var(--accent-ink) 22%, transparent); }
+.auth-quote { position: relative; z-index: 1; font: italic 500 1.05rem var(--font-serif); opacity: .85; max-width: 38ch; }
+
+.auth-main { display: flex; flex-direction: column; min-height: 100vh; }
+.auth-top { display: flex; justify-content: space-between; align-items: center; padding: 18px clamp(18px, 4vw, 40px); }
+.auth-top .brand { display: none; }
+@media (max-width: 920px) { .auth-top .brand { display: inline-flex; } }
+.auth-top .back-home { color: var(--muted); font-weight: 600; text-decoration: none; display: inline-flex; gap: 6px; align-items: center; font-size: .92rem; }
+.auth-top .back-home:hover { color: var(--text); }
+.auth-center { flex: 1; display: grid; place-items: center; padding: 12px clamp(18px, 4vw, 40px) 48px; }
+.auth-card { width: min(460px, 100%); }
+.auth-card.wide { width: min(600px, 100%); }
+.auth-card h1 { font-size: clamp(1.9rem, 3vw, 2.4rem); letter-spacing: -.025em; }
+.auth-card .lede { color: var(--muted); margin: 8px 0 26px; }
+.auth-form { display: grid; gap: 18px; }
+.auth-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+.auth-form .btn.primary { width: 100%; min-height: 50px; font-size: 1rem; border-radius: 13px; }
+.auth-alt { text-align: center; color: var(--muted); margin-top: 22px; }
+.auth-alt a { font-weight: 700; }
+.role-pick { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.role-card { display: flex; gap: 12px; align-items: flex-start; text-align: left; padding: 14px; border: 1.5px solid var(--line); border-radius: 14px; background: var(--panel); cursor: pointer; font: inherit; color: var(--text); transition: border-color .15s, background .15s, box-shadow .15s; }
+.role-card:hover { border-color: var(--strong); }
+.role-card[aria-checked='true'] { border-color: var(--accent); background: var(--accent-soft); box-shadow: var(--ring); }
+.role-card .ic { width: 38px; height: 38px; border-radius: 11px; display: grid; place-items: center; background: var(--raised); color: var(--muted); flex: none; }
+.role-card[aria-checked='true'] .ic { background: var(--accent); color: var(--accent-ink); }
+.role-card b { display: block; }
+.role-card span.sub { font-size: .82rem; color: var(--muted); }
+.auth-done { text-align: center; display: grid; gap: 14px; justify-items: center; }
+.auth-done .big { width: 64px; height: 64px; border-radius: 50%; display: grid; place-items: center; background: var(--good-soft); color: var(--ok); }
+.auth-done .big svg { width: 30px; height: 30px; }
+.sep { display: flex; align-items: center; gap: 12px; color: var(--faint); font-size: .8rem; text-transform: uppercase; letter-spacing: .1em; }
+.sep::before, .sep::after { content: ''; flex: 1; height: 1px; background: var(--line); }

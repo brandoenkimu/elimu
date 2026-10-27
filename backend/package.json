@@ -1,0 +1,57 @@
+{
+  "name": "elimu-backend",
+  "version": "2.0.0",
+  "private": true,
+  "description": "Elimu: campus learning and chat platform backend (NestJS, Socket.IO, Redis, PostgreSQL)",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "dev": "nest start --watch",
+    "start": "node dist/main.js",
+    "start:a": "cross-env NODE_ID=NODE_A PORT=3001 node dist/main.js",
+    "start:b": "cross-env NODE_ID=NODE_B PORT=3002 node dist/main.js",
+    "start:c": "cross-env NODE_ID=NODE_C PORT=3003 node dist/main.js",
+    "cluster": "concurrently -k -n A,B,C -c cyan,magenta,yellow \"npm:start:a\" \"npm:start:b\" \"npm:start:c\"",
+    "db:init": "tsx scripts/db-init.ts",
+    "test:cluster": "tsx scripts/cross-node-test.ts",
+    "typecheck": "tsc --noEmit",
+    "seed:admin": "tsx scripts/seed-admin.ts",
+    "seed:demo": "tsx scripts/seed-demo.ts",
+    "test:logic": "tsx scripts/logic-tests.ts"
+  },
+  "dependencies": {
+    "@nestjs/common": "^11.0.0",
+    "@nestjs/core": "^11.0.0",
+    "@nestjs/jwt": "^11.0.0",
+    "@nestjs/platform-express": "^11.0.0",
+    "@nestjs/platform-socket.io": "^11.0.0",
+    "@nestjs/websockets": "^11.0.0",
+    "@socket.io/redis-adapter": "^8.3.0",
+    "argon2": "^0.41.1",
+    "cookie-parser": "^1.4.7",
+    "dotenv": "^16.4.5",
+    "helmet": "^8.0.0",
+    "ioredis": "^5.4.1",
+    "nodemailer": "^6.9.16",
+    "pg": "^8.13.0",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.1",
+    "socket.io": "^4.8.1",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@nestjs/cli": "^11.0.0",
+    "@types/cookie-parser": "^1.4.7",
+    "@types/express": "^5.0.0",
+    "@types/node": "^22.7.0",
+    "@types/nodemailer": "^6.4.17",
+    "@types/pg": "^8.11.10",
+    "concurrently": "^9.0.1",
+    "cross-env": "^7.0.3",
+    "socket.io-client": "^4.8.1",
+    "tsx": "^4.19.1",
+    "typescript": "^5.6.3"
+  }
+}

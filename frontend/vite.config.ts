@@ -8,5 +8,11 @@ export default defineConfig({
     // The backend only accepts this exact origin (CORS_ORIGINS), so never drift to another port.
     port: 5173,
     strictPort: true,
+    proxy: {
+      '/api': {
+        target: 'http://localhost:4000',
+        changeOrigin: true,
+      },
+    },
   },
 });

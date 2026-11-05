@@ -13,7 +13,10 @@ function parseNodes(spec: string): NodeDef[] {
     .filter(Boolean)
     .map((entry) => {
       const at = entry.indexOf('=');
-      return { id: entry.slice(0, at).trim(), url: entry.slice(at + 1).trim().replace(/\/+$/, '') };
+      return {
+        id: entry.slice(0, at).trim(),
+        url: entry.slice(at + 1).trim().replace(/\/+$/, ''),
+      };
     })
     .filter((node) => node.id && node.url);
 }
@@ -21,9 +24,13 @@ function parseNodes(spec: string): NodeDef[] {
 export const NODES: NodeDef[] = parseNodes(import.meta.env.VITE_NODES || DEFAULT_NODES);
 
 const gateway = import.meta.env.VITE_GATEWAY_URL;
-/** null disables the gateway; the browser then checks node health on its own. */
-export const GATEWAY_URL: string | null =
-  gateway === undefined ? 'http://localhost:4000' : gateway.trim() === '' ? null : gateway.trim().replace(/\/+$/, '');
+
+export const GATEWAY_URL: string =
+  gateway?.trim()
+    ? gateway.trim().replace(/\/+$/, '')
+    : import.meta.env.PROD
+      ? 'https://elimu-backend-ty73.onrender.com'
+      : 'http://localhost:4000';
 
 export const POLL_MS = 3_000;
 export const MAX_MESSAGE_LENGTH = 2_000;

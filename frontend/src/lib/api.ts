@@ -1,4 +1,3 @@
-import type { ClusterMonitor } from './cluster';
 import type { AuthPayload, ConversationSummary, FileMeta, Member, WireMessage } from './types';
 
 export interface FieldIssue {
@@ -62,11 +61,10 @@ const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve,
 export class ApiClient {
   private token: string | null = null;
   private tokenExpiresAtMs = 0;
-  private currentNode: string | null = null;
   private refreshing: Promise<AuthPayload> | null = null;
   private readonly tokenListeners = new Set<(token: string | null) => void>();
 
-  constructor(private readonly monitor: ClusterMonitor) {}
+  constructor() {}
 
   get accessToken(): string | null {
     return this.token;
@@ -271,17 +269,18 @@ export class ApiClient {
     }
   }
 
-  /** One logical request, tried against nodes in order of preference. */
+  /** Sends requests through the same-origin Vercel route or local Vite proxy. */
   private async send<T>(path: string, options: RequestOptions & { token?: string }): Promise<T> {
     const method: Method = options.method ?? (options.body !== undefined || options.raw ? 'POST' : 'GET');
     const mayRetryOnNetworkError = method === 'GET' || options.retry === true;
-    const candidates = this.monitor.candidates({ prefer: this.currentNode ?? undefined });
+    const maxAttempts = mayRetryOnNetworkError ? 2 : 1;
     let lastError: ApiError | null = null;
 
-    for (const node of candidates) {
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
       let response: Response;
+
       try {
-        response = await fetch(`${node.url}/api${path}`, {
+        response = await fetch(`/api${path}`, {
           method,
           credentials: 'include',
           headers: {
@@ -293,15 +292,12 @@ export class ApiClient {
           signal: AbortSignal.timeout(options.raw || options.blob ? 60_000 : 10_000),
         });
       } catch {
-        this.monitor.reportFailure(node.id);
         lastError = new ApiError(0, 'NETWORK', 'Cannot reach Elimu right now. Check your connection.');
-        if (!mayRetryOnNetworkError) break;
-        continue;
+        if (attempt + 1 < maxAttempts) continue;
+        throw lastError;
       }
 
       if (response.ok) {
-        this.currentNode = node.id;
-        this.monitor.reportSuccess(node.id);
         if (response.status === 204) return undefined as T;
         if (options.blob) return (await response.blob()) as T;
         return (await response.json()) as T;
@@ -316,16 +312,15 @@ export class ApiClient {
         body.issues,
       );
 
-      // 503 means this node refused before doing any work (a dependency is down),
-      // so trying another node is always safe, even for a POST.
-      if (response.status === 503) {
-        this.monitor.reportFailure(node.id);
+      if (response.status === 503 && attempt + 1 < maxAttempts) {
         lastError = error;
         continue;
       }
+
       throw error;
     }
 
     throw lastError ?? new ApiError(0, 'NETWORK', 'Cannot reach Elimu right now. Check your connection.');
   }
+
 }

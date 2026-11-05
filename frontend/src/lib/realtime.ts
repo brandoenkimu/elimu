@@ -1,6 +1,6 @@
 import { io, type Socket } from 'socket.io-client';
 import { ApiError, type ApiClient } from './api';
-import type { ClusterMonitor } from './cluster';
+import { GATEWAY_URL } from './config';
 import type { AppNotification, LinkState, Reaction, SendAck, WireMessage } from './types';
 
 interface Events {
@@ -58,11 +58,9 @@ export class RealtimeClient extends Emitter<Events> {
   private running = false;
   private attempt = 0;
   private everConnected = false;
-  private lastFailedNode: string | undefined;
   private timer: number | undefined;
 
   constructor(
-    private readonly monitor: ClusterMonitor,
     private readonly api: ApiClient,
   ) {
     super();
@@ -76,7 +74,6 @@ export class RealtimeClient extends Emitter<Events> {
     if (this.running) return;
     this.running = true;
     this.attempt = 0;
-    this.lastFailedNode = undefined;
     void this.connect();
   }
 
@@ -133,11 +130,8 @@ export class RealtimeClient extends Emitter<Events> {
     }
     if (!this.running) return;
 
-    const [target] = this.monitor.candidates({ avoid: this.lastFailedNode });
-    if (!target) return this.scheduleRetry();
-
     this.teardown();
-    const socket = io(target.url, {
+    const socket = io(GATEWAY_URL, {
       transports: ['websocket'],
       auth: { token },
       reconnection: false,
@@ -151,8 +145,6 @@ export class RealtimeClient extends Emitter<Events> {
       const reconnect = this.everConnected;
       this.everConnected = true;
       this.attempt = 0;
-      this.lastFailedNode = undefined;
-      this.monitor.reportSuccess(target.id);
       this.setLink('online', hello.node);
       this.emit('online', { node: hello.node, reconnect });
     });
@@ -164,16 +156,16 @@ export class RealtimeClient extends Emitter<Events> {
     socket.on('connect_error', (err: Error) => {
       // The server attaches a machine-readable reason (NO_TOKEN, TOKEN_EXPIRED, RATE_LIMITED...) as err.data.code.
       const code = (err as Error & { data?: { code?: string } }).data?.code;
-      if (this.socket === socket) void this.onFailure(target.id, code);
+      if (this.socket === socket) void this.onFailure(code);
     });
     socket.on('disconnect', (reason: string) => {
       if (this.socket !== socket) return;
       // "io server disconnect" is the server closing us on purpose (token expiry); the node itself is fine.
-      void this.onFailure(target.id, reason === 'io server disconnect' ? 'SERVER_CLOSED' : undefined);
+      void this.onFailure(reason === 'io server disconnect' ? 'SERVER_CLOSED' : undefined);
     });
   }
 
-  private async onFailure(nodeId: string, code: string | undefined): Promise<void> {
+  private async onFailure(code: string | undefined): Promise<void> {
     this.teardown();
     if (!this.running) return;
 
@@ -189,8 +181,6 @@ export class RealtimeClient extends Emitter<Events> {
       return this.scheduleRetry();
     }
 
-    if (code !== 'RATE_LIMITED') this.monitor.reportFailure(nodeId);
-    this.lastFailedNode = nodeId;
     this.scheduleRetry(code === 'RATE_LIMITED' ? 5_000 : undefined);
   }
 

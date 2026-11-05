@@ -46,6 +46,30 @@ const state = new Map(NODES.map((node) => [
   },
 ]));
 
+const socketSessions = new Map();
+const SOCKET_SESSION_TTL_MS = 2 * 60 * 60 * 1000;
+
+function getSocketNode(requestUrl) {
+  const parsed = new URL(requestUrl ?? "/", "http://gateway");
+  const sid = parsed.searchParams.get("sid");
+
+  if (!sid) return selectNode();
+
+  const session = socketSessions.get(sid);
+
+  if (!session || session.expiresAt <= Date.now()) {
+    socketSessions.delete(sid);
+    return null;
+  }
+
+  const node = state.get(session.nodeId);
+
+  if (!node || node.status !== "healthy") return null;
+
+  session.expiresAt = Date.now() + SOCKET_SESSION_TTL_MS;
+  return node;
+}
+
 function setStatus(node, status) {
   if (node.status !== status) {
     console.log(`[gateway] ${node.id}: ${node.status} -> ${status}`);
@@ -222,6 +246,90 @@ function proxyHttp(req, res) {
   req.pipe(proxyReq);
 }
 
+function proxySocketHttp(req, res) {
+  const requestUrl = new URL(req.url ?? "/", "http://gateway");
+  const sid = requestUrl.searchParams.get("sid");
+  const node = getSocketNode(req.url);
+
+  if (!node) return sendUnavailable(res);
+
+  const target = new URL(node.url);
+  const transport = target.protocol === "https:" ? https : http;
+
+  const headers = { ...req.headers };
+  headers.host = target.host;
+  headers["x-forwarded-host"] = req.headers.host ?? "";
+  headers["x-forwarded-proto"] = "https";
+  headers["accept-encoding"] = "identity";
+
+  const proxyReq = transport.request({
+    protocol: target.protocol,
+    hostname: target.hostname,
+    port: target.port || undefined,
+    method: req.method,
+    path: req.url,
+    headers,
+    timeout: 60_000,
+  }, (proxyRes) => {
+    const chunks = [];
+
+    proxyRes.on("data", (chunk) => chunks.push(chunk));
+
+    proxyRes.on("end", () => {
+      const body = Buffer.concat(chunks);
+
+      // The first Engine.IO polling response contains packet 0
+      // followed by the JSON object containing the new session ID.
+      if (!sid && req.method === "GET" && proxyRes.statusCode === 200) {
+        const packet = body.toString("utf8");
+
+        if (packet.startsWith("0")) {
+          try {
+            const handshake = JSON.parse(packet.slice(1));
+
+            if (typeof handshake.sid === "string" && handshake.sid) {
+              socketSessions.set(handshake.sid, {
+                nodeId: node.id,
+                expiresAt: Date.now() + SOCKET_SESSION_TTL_MS,
+              });
+            }
+          } catch {
+            // Non-handshake polling packets need no new session mapping.
+          }
+        }
+      }
+
+      res.writeHead(proxyRes.statusCode ?? 502, proxyRes.headers);
+      res.end(body);
+    });
+
+    proxyRes.on("error", (error) => {
+      console.error(`[gateway] Socket.IO response from ${node.id} failed: ${error.message}`);
+      res.destroy(error);
+    });
+  });
+
+  proxyReq.on("timeout", () => {
+    proxyReq.destroy(new Error("Socket.IO polling request timed out"));
+  });
+
+  proxyReq.on("error", (error) => {
+    console.error(`[gateway] Socket.IO HTTP proxy to ${node.id} failed: ${error.message}`);
+
+    if (!res.headersSent) {
+      res.writeHead(502, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({
+        code: "SOCKET_UPSTREAM_ERROR",
+        message: "The real-time backend could not complete the request.",
+      }));
+    } else {
+      res.destroy(error);
+    }
+  });
+
+  req.pipe(proxyReq);
+}
+
 const server = http.createServer((req, res) => {
   setCors(req, res);
 
@@ -249,6 +357,10 @@ const server = http.createServer((req, res) => {
     return res.end('{"status":"ok"}');
   }
 
+  if (path === '/socket.io' || path.startsWith('/socket.io/')) {
+    return proxySocketHttp(req, res);
+  }
+
   if (path === '/api' || path.startsWith('/api/')) {
     return proxyHttp(req, res);
   }
@@ -265,7 +377,7 @@ server.on('upgrade', (req, clientSocket, head) => {
     return;
   }
 
-  const node = selectNode();
+  const node = getSocketNode(req.url);
 
   if (!node) {
     clientSocket.end('HTTP/1.1 503 Service Unavailable\r\nConnection: close\r\n\r\n');
